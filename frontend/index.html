@@ -1,29 +1,246 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>CI-CD Demo</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CI-CD Notes App</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f5f5f5;
+    margin:0;
+    padding:40px;
+}
+
+.container{
+    max-width:800px;
+    margin:auto;
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+h1{
+    text-align:center;
+}
+
+input,
+textarea{
+    width:100%;
+    padding:10px;
+    margin-top:10px;
+    margin-bottom:10px;
+    border:1px solid #ccc;
+    border-radius:5px;
+    box-sizing:border-box;
+}
+
+textarea{
+    height:120px;
+    resize:vertical;
+}
+
+button{
+    padding:10px 20px;
+    border:none;
+    border-radius:5px;
+    cursor:pointer;
+    background:#007bff;
+    color:white;
+}
+
+button:hover{
+    opacity:0.9;
+}
+
+.note{
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:15px;
+    margin-top:15px;
+}
+
+.note h3{
+    margin-top:0;
+}
+
+.delete-btn{
+    background:#dc3545;
+    margin-top:10px;
+}
+
+.status{
+    margin-bottom:20px;
+    padding:10px;
+    border-radius:5px;
+    background:#eef;
+}
+
+</style>
+
 </head>
 
 <body>
 
-<h1>CI-CD Learning App</h1>
+<div class="container">
 
-<button onclick="check()">Health Check</button>
+    <h1>CI-CD Notes App</h1>
 
-<p id="result"></p>
+    <div class="status">
+        Backend Status:
+        <span id="health">Checking...</span>
+    </div>
+
+    <input
+        id="title"
+        type="text"
+        placeholder="Note Title"
+    >
+
+    <textarea
+        id="content"
+        placeholder="Write your note here..."
+    ></textarea>
+
+    <button onclick="createNote()">
+        Create Note
+    </button>
+
+    <hr>
+
+    <h2>All Notes</h2>
+
+    <div id="notes">
+        Loading...
+    </div>
+
+</div>
 
 <script>
 
-async function check(){
+const API_BASE = "/api";
 
-const response = await fetch('/api/health')
+async function checkHealth(){
 
-const data = await response.json()
+    try{
 
-document.getElementById('result').innerHTML=
-JSON.stringify(data)
+        const response =
+        await fetch(`${API_BASE}/health`);
 
+        const data =
+        await response.json();
+
+        document.getElementById("health").innerText =
+        data.status;
+
+    }catch(err){
+
+        document.getElementById("health").innerText =
+        "Backend Down";
+    }
 }
+
+async function createNote(){
+
+    const title =
+    document.getElementById("title").value.trim();
+
+    const content =
+    document.getElementById("content").value.trim();
+
+    if(!title || !content){
+
+        alert("Please fill all fields");
+        return;
+    }
+
+    await fetch(`${API_BASE}/notes`,{
+
+        method:"POST",
+
+        headers:{
+            "Content-Type":"application/json"
+        },
+
+        body:JSON.stringify({
+            title:title,
+            content:content
+        })
+    });
+
+    document.getElementById("title").value = "";
+    document.getElementById("content").value = "";
+
+    loadNotes();
+}
+
+async function deleteNote(id){
+
+    await fetch(
+        `${API_BASE}/notes/${id}`,
+        {
+            method:"DELETE"
+        }
+    );
+
+    loadNotes();
+}
+
+async function loadNotes(){
+
+    const notesContainer =
+    document.getElementById("notes");
+
+    try{
+
+        const response =
+        await fetch(`${API_BASE}/notes`);
+
+        const notes =
+        await response.json();
+
+        if(notes.length === 0){
+
+            notesContainer.innerHTML =
+            "<p>No notes found.</p>";
+
+            return;
+        }
+
+        notesContainer.innerHTML = "";
+
+        notes.forEach(note => {
+
+            notesContainer.innerHTML += `
+                <div class="note">
+
+                    <h3>${note.title}</h3>
+
+                    <p>${note.content}</p>
+
+                    <button
+                        class="delete-btn"
+                        onclick="deleteNote(${note.id})">
+                        Delete
+                    </button>
+
+                </div>
+            `;
+        });
+
+    }catch(err){
+
+        notesContainer.innerHTML =
+        "<p>Failed to load notes.</p>";
+    }
+}
+
+checkHealth();
+loadNotes();
 
 </script>
 
